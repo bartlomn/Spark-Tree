@@ -1,16 +1,23 @@
 package com.sparkTree
 {
 import flash.events.Event;
+import flash.events.KeyboardEvent;
+import flash.ui.Keyboard;
 
 import mx.collections.IList;
 import mx.controls.treeClasses.DefaultDataDescriptor;
 import mx.controls.treeClasses.ITreeDataDescriptor2;
 import mx.core.ClassFactory;
 import mx.core.FlexGlobals;
+import mx.core.IVisualElement;
+import mx.core.mx_internal;
+import mx.events.DragEvent;
+import mx.events.FlexEvent;
 import mx.styles.CSSStyleDeclaration;
 
-import spark.components.DataGrid;
-import spark.components.gridClasses.IGridItemRenderer;
+import spark.components.List;
+
+use namespace mx_internal;
 
 //--------------------------------------
 //  Events
@@ -38,19 +45,22 @@ import spark.components.gridClasses.IGridItemRenderer;
 /**
  *  Specifies the icon that is displayed next to a parent item that is open so that its
  *  children are displayed.
+ *
+ *  The default value is the "TreeDisclosureOpen" symbol in the Assets.swf file.
  */
 [Style(name="disclosureOpenIcon", type="Class", format="EmbeddedFile", inherit="no")]
 
 /**
  *  Specifies the icon that is displayed next to a parent item that is closed so that its
  *  children are not displayed (the subtree is collapsed).
+ *
+ *  The default value is the "TreeDisclosureClosed" symbol in the Assets.swf file.
  */
 [Style(name="disclosureClosedIcon", type="Class", format="EmbeddedFile", inherit="no")]
-
 /**
  * Indentation for each tree level, in pixels. The default value is 17.
  */
-[Style(name="indentation", type="Number", inherit="no")]
+[Style(name="indentation", type="Number", inherit="no", theme="spark")]
 
 /**
  *  Specifies the folder open icon for a branch item of the tree.
@@ -76,14 +86,11 @@ import spark.components.gridClasses.IGridItemRenderer;
  *  Color of the text when the user selects a row.
  */
 [Style(name="textSelectedColor", type="uint", format="Color", inherit="yes")]
-
 /**
- * Custom Spark AdvancedDataGrid that is based on Spark DataGrid.
- * 
- * <p>Specify <code>DefaultTreeADGItemRenderer</code> as item renderer for column
- * that should be a tree column.</p>
+ * Custom Spark Tree that is based on Spark List. Supports most of MX Tree
+ * features and does not have it's bugs.
  */
-public class AdvancedDataGrid extends DataGrid
+public class Tree extends List
 {
 	
 	//--------------------------------------------------------------------------
@@ -92,13 +99,14 @@ public class AdvancedDataGrid extends DataGrid
 	//
 	//--------------------------------------------------------------------------
 	
-	public function AdvancedDataGrid()
+	public function Tree()
 	{
 		super();
 		
-		initializeStyles();
+		// Handle styles when getStyle() will return corrent values.
+		addEventListener(FlexEvent.PREINITIALIZE, preinitializeHandler);
 		
-		initializeItemRenderer();
+		itemRenderer = new ClassFactory(DefaultTreeItemRenderer);
 	}
 	
 	//--------------------------------------------------------------------------
@@ -107,20 +115,24 @@ public class AdvancedDataGrid extends DataGrid
 	//
 	//--------------------------------------------------------------------------
 	
-	[Embed("../../../assets/disclosureOpenIcon.png")]
+	[Embed("/disclosureOpenIcon.png")]
 	private var disclosureOpenIcon:Class;
 	
-	[Embed("../../../assets/disclosureClosedIcon.png")]
+	[Embed("/disclosureClosedIcon.png")]
 	private var disclosureClosedIcon:Class;
 	
-	[Embed("../../../assets/folderOpenIcon.png")]
+	[Embed("/folderOpenIcon.png")]
 	private var folderOpenIcon:Class;
 	
-	[Embed("../../../assets/folderClosedIcon.png")]
+	[Embed("/folderClosedIcon.png")]
 	private var folderClosedIcon:Class;
 	
-	[Embed("../../../assets/defaultLeafIcon.png")]
+	[Embed("/defaultLeafIcon.png")]
 	private var defaultLeafIcon:Class;
+	
+	private var refreshRenderersCalled:Boolean = false;
+	
+	private var renderersToRefresh:Vector.<ITreeItemRenderer> = new Vector.<ITreeItemRenderer>();
 	
 	//--------------------------------------------------------------------------
 	//
@@ -131,15 +143,10 @@ public class AdvancedDataGrid extends DataGrid
 	//----------------------------------
 	//  dataDescriptor
 	//----------------------------------
-	
+
 	private var _dataDescriptor:ITreeDataDescriptor2 = new DefaultDataDescriptor();
 	
 	[Bindable("dataDescriptorChange")]
-	/**
-	 * Data descriptor defines such logic as children field name.
-	 * 
-	 * @default DefaultDataDescriptor
-	 */
 	public function get dataDescriptor():ITreeDataDescriptor2
 	{
 		return _dataDescriptor;
@@ -204,13 +211,6 @@ public class AdvancedDataGrid extends DataGrid
 	private var _iconField:String = "icon";
 	
 	[Bindable("iconFieldChange")]
-	/**
-	 * Name of the field where icon is stored
-	 * 
-	 * @default icon
-	 * 
-	 * @see iconsVisible
-	 */
 	public function get iconField():String
 	{
 		return _iconField;
@@ -310,7 +310,7 @@ public class AdvancedDataGrid extends DataGrid
 	[Bindable("useTextColorsChange")]
 	/**
 	 * MX components use "textRollOverColor" and "textSelectedColor" while Spark
-	 * do not. Set this property to <code>true</code> to use them in grid.
+	 * do not. Set this property to <code>true</code> to use them in tree.
 	 */
 	public function get useTextColors():Boolean
 	{
@@ -326,34 +326,106 @@ public class AdvancedDataGrid extends DataGrid
 		refreshRenderers();
 		dispatchEvent(new Event("useTextColorsChange"));
 	}
+
+	//--------------------------------------------------------------------------
+	//
+	//  Overriden methods
+	//
+	//--------------------------------------------------------------------------
 	
+	override public function updateRenderer(renderer:IVisualElement, itemIndex:int, data:Object):void
+	{
+		itemIndex = _dataProvider.getItemIndex(data);
+		
+		super.updateRenderer(renderer, itemIndex, data);
+		
+		var treeItemRenderer:ITreeItemRenderer = ITreeItemRenderer(renderer);
+		treeItemRenderer.level = _dataProvider.getItemLevel(data);
+		treeItemRenderer.isBranch = true;
+		treeItemRenderer.isLeaf = false;
+		treeItemRenderer.hasChildren = dataDescriptor.hasChildren(data);
+		treeItemRenderer.isOpen = _dataProvider.isOpen(data);
+		treeItemRenderer.icon = _iconsVisible ? getIcon(data) : null;
+	}
+	
+	override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void
+	{
+		super.updateDisplayList(unscaledWidth, unscaledHeight);
+		
+		// refresh all renderers or only some of them
+		var n:int;
+		var i:int;
+		var renderer:ITreeItemRenderer;
+		if (refreshRenderersCalled)
+		{
+			refreshRenderersCalled = false;
+			n = dataGroup.numElements;
+			for (i = 0; i < n; i++)
+			{
+				renderer = dataGroup.getElementAt(i) as ITreeItemRenderer;
+				if (renderer && renderer.data)
+					updateRenderer(renderer, renderer.itemIndex, renderer.data);
+			}
+		}
+		else if (renderersToRefresh.length > 0)
+		{
+			n = renderersToRefresh.length;
+			for (i = 0; i < n; i++)
+			{
+				renderer = renderersToRefresh[i];
+				if (renderer && renderer.data)
+					updateRenderer(renderer, renderer.itemIndex, renderer.data);
+			}
+		}
+		if (renderersToRefresh.length > 0)
+			renderersToRefresh.splice(0, renderersToRefresh.length);
+	}
+	
+	/**
+	 * Handle <code>Keyboard.LEFT</code> and <code>Keyboard.RIGHT</code> as tree
+	 * node collapsing and expanding.
+	 */
+	override protected function adjustSelectionAndCaretUponNavigation(event:KeyboardEvent):void
+	{
+		super.adjustSelectionAndCaretUponNavigation(event);
+		
+		if (!selectedItem)
+			return;
+		
+		var navigationUnit:uint = mapKeycodeForLayoutDirection(event);
+		if (navigationUnit == Keyboard.LEFT)
+		{
+			if (_dataProvider.isOpen(selectedItem))
+			{
+				expandItem(selectedItem, false);
+			}
+			else
+			{
+				var parent:Object = _dataProvider.getItemParent(selectedItem);
+				if (parent)
+					selectedItem = parent;
+			}
+		}
+		else if (navigationUnit == Keyboard.RIGHT)
+		{
+			expandItem(selectedItem);
+		}
+	}
+		
 	//--------------------------------------------------------------------------
 	//
 	//  Methods
 	//
 	//--------------------------------------------------------------------------
 	
-	protected function initializeStyles():void
+	/**
+	 * Checks if Spark Tree has it's custom styles defined.
+	 */
+	protected function hasOwnStyles():Boolean
 	{
-		var declaration:CSSStyleDeclaration = 
-			FlexGlobals.topLevelApplication.styleManager.getStyleDeclaration(
-				"com.sparkTree.AdvancedDataGrid");
-		
-		// do not override styles if there are some in CSS
-		if (declaration)
-			return;
-		
-		setStyle("indentation", 17);
-		setStyle("disclosureOpenIcon", disclosureOpenIcon);
-		setStyle("disclosureClosedIcon", disclosureClosedIcon);
-		setStyle("folderOpenIcon", folderOpenIcon);
-		setStyle("folderClosedIcon", folderClosedIcon);
-		setStyle("defaultLeafIcon", defaultLeafIcon);
-	}
-	
-	protected function initializeItemRenderer():void
-	{
-		itemRenderer = new ClassFactory(DefaultADGItemRenderer);
+		return getStyle("disclosureOpenIcon") || 
+			getStyle("disclosureClosedIcon") || getStyle("folderOpenIcon") ||
+			getStyle("folderClosedIcon") || getStyle("defaultLeafIcon");
 	}
 	
 	public function expandItem(item:Object, open:Boolean = true, cancelable:Boolean = true):void
@@ -403,31 +475,36 @@ public class AdvancedDataGrid extends DataGrid
 		return icon;
 	}
 	
-	public function getTextColor(renderer:IGridItemRenderer):uint
-	{
-		if (!_useTextColors)
-			return getStyle("color");
-		
-		if (!enabled)
-			return getStyle("disabledColor");
-		else if (renderer.selected)
-			return getStyle("textSelectedColor");
-		else if (renderer.hovered)
-			return getStyle("textRollOverColor");
-		else
-			return getStyle("color");
-	}
-	
 	public function refreshRenderers():void
 	{
-		if (grid)
-			grid.invalidateDisplayList();
+		refreshRenderersCalled = true;
+		invalidateDisplayList();
 	}
 	
 	public function refreshRenderer(renderer:ITreeItemRenderer):void
 	{
-		if (grid)
-			grid.invalidateCell(renderer.itemIndex, 0);
+		renderersToRefresh.push(renderer);
+		invalidateDisplayList();
+	}
+	
+	//--------------------------------------------------------------------------
+	//
+	//  Overriden event handlers
+	//
+	//--------------------------------------------------------------------------
+
+	override protected function dragDropHandler(event:DragEvent):void
+	{
+		// list does not take in account that removing an open node while drag
+		// can cause list to loose more than 1 element. When element is dropped,
+		// to big index can be specified in dataProvider.addItemAt()
+		if (_dataProvider)
+			_dataProvider.allowIncorrectIndexes = true;
+		
+		super.dragDropHandler(event);
+		
+		if (_dataProvider)
+			_dataProvider.allowIncorrectIndexes = false;
 	}
 	
 	//--------------------------------------------------------------------------
@@ -436,16 +513,46 @@ public class AdvancedDataGrid extends DataGrid
 	//
 	//--------------------------------------------------------------------------
 	
+	protected function preinitializeHandler(event:FlexEvent):void
+	{
+		var mxTreeDeclaration:CSSStyleDeclaration = 
+			FlexGlobals.topLevelApplication.styleManager.getStyleDeclaration("mx.controls.Tree");
+		if (hasOwnStyles() || !mxTreeDeclaration) {
+			// Initialize styles with some defaults to simplify usage.
+			if (!getStyle("indentation"))
+				setStyle("indentation", 17);
+			if (!getStyle("disclosureOpenIcon"))
+				setStyle("disclosureOpenIcon", disclosureOpenIcon);
+			if (!getStyle("disclosureClosedIcon"))
+				setStyle("disclosureClosedIcon", disclosureClosedIcon);
+			if (!getStyle("folderOpenIcon"))
+				setStyle("folderOpenIcon", folderOpenIcon);
+			if (!getStyle("folderClosedIcon"))
+				setStyle("folderClosedIcon", folderClosedIcon);
+			if (!getStyle("defaultLeafIcon"))
+				setStyle("defaultLeafIcon", defaultLeafIcon);
+		} 
+		else if (mxTreeDeclaration) // MX Tree may not be used in the application
+		{
+			setStyle("indentation", mxTreeDeclaration.getStyle("indentation"));
+			setStyle("disclosureOpenIcon", mxTreeDeclaration.getStyle("disclosureOpenIcon"));
+			setStyle("disclosureClosedIcon", mxTreeDeclaration.getStyle("disclosureClosedIcon"));
+			setStyle("folderOpenIcon", mxTreeDeclaration.getStyle("folderOpenIcon"));
+			setStyle("folderClosedIcon", mxTreeDeclaration.getStyle("folderClosedIcon"));
+			setStyle("defaultLeafIcon", mxTreeDeclaration.getStyle("defaultLeafIcon"));
+		}
+	}
+	
 	private function dataProvider_someHandler(event:TreeEvent):void
 	{
 		var clonedEvent:TreeEvent = TreeEvent(event.clone());
-		if (grid)
+		if (dataGroup)
 		{
 			// find corresponding item renderer
-			var n:int = grid.numElements;
+			var n:int = dataGroup.numElements;
 			for (var i:int = 0; i < n; i++)
 			{
-				var renderer:ITreeItemRenderer = grid.getElementAt(i) as ITreeItemRenderer;
+				var renderer:ITreeItemRenderer = dataGroup.getElementAt(i) as ITreeItemRenderer;
 				if (renderer && renderer.data == event.item)
 					clonedEvent.itemRenderer = renderer;
 			}

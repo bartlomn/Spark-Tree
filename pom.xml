@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+   <modelVersion>4.0.0</modelVersion>
+
+   <groupId>com.kachurovskiy</groupId>
+   <artifactId>SparkTree</artifactId>
+   <version>4.5</version>
+   <packaging>swc</packaging>
+
+   <repositories>
+      <repository>
+         <snapshots>
+            <enabled>false</enabled>
+         </snapshots>
+         <id>central</id>
+         <name>libs-release</name>
+         <url>http://v-ts01.scandoc.local/artifactory/libs-release</url>
+      </repository>
+
+      <repository>
+         <snapshots/>
+         <id>snapshots</id>
+         <name>libs-snapshot</name>
+         <url>http://v-ts01.scandoc.local/artifactory/libs-snapshot</url>
+      </repository>
+   </repositories>
+
+   <pluginRepositories>
+      <pluginRepository>
+         <snapshots>
+            <enabled>false</enabled>
+         </snapshots>
+         <id>central</id>
+         <name>plugins-release</name>
+         <url>http://v-ts01.scandoc.local/artifactory/plugins-release</url>
+      </pluginRepository>
+
+      <pluginRepository>
+         <snapshots/>
+         <id>snapshots</id>
+         <name>plugins-snapshot</name>
+         <url>http://v-ts01.scandoc.local/artifactory/plugins-snapshot</url>
+      </pluginRepository>
+   </pluginRepositories>
+
+   <distributionManagement>
+      <repository>
+         <id>libs-release-local</id>
+         <url>http://v-ts01.scandoc.local/artifactory/libs-release-local</url>
+      </repository>
+   </distributionManagement>
+
+   <dependencyManagement>
+      <dependencies>
+         <dependency>
+            <groupId>org.apache.flex</groupId>
+            <artifactId>framework</artifactId>
+            <version>LATEST</version>
+            <type>pom</type>
+            <scope>import</scope>
+         </dependency>
+      </dependencies>
+   </dependencyManagement>
+
+   <dependencies>
+      <dependency>
+         <groupId>org.apache.flex.framework</groupId>
+         <artifactId>flex-framework</artifactId>
+         <type>pom</type>
+      </dependency>
+   </dependencies>
+
+   <build>
+      <sourceDirectory>src/main/flex</sourceDirectory>
+      <testSourceDirectory>src/test/flex</testSourceDirectory>
+      <plugins>
+         <plugin>
+            <groupId>net.flexmojos.oss</groupId>
+            <artifactId>flexmojos-maven-plugin</artifactId>
+            <version>7.0.0-SNAPSHOT</version>
+            <extensions>true</extensions>
+            <configuration>
+               <debug>true</debug>
+               <compilerWarnings>
+                  <warn-no-constructor>false</warn-no-constructor>
+               </compilerWarnings>
+               <defines>
+                  <property>
+                     <name>CONFIG::dev</name>
+                     <value>true</value>
+                  </property>
+               </defines>
+            </configuration>
+
+            <dependencies>
+               <dependency>
+                  <groupId>net.flexmojos.oss</groupId>
+                  <artifactId>flexmojos-threadlocaltoolkit-wrapper</artifactId>
+                  <version>7.0.0-SNAPSHOT</version>
+               </dependency>
+
+               <dependency>
+                  <groupId>org.apache.flex</groupId>
+                  <artifactId>compiler</artifactId>
+                  <version>LATEST</version>
+                  <type>pom</type>
+               </dependency>
+            </dependencies>
+         </plugin>
+      </plugins>
+   </build>
+
+</project>
