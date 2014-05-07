@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
 	xmlns:s="library://ns.adobe.com/flex/spark" 
-	xmlns:mx="library://ns.adobe.com/flex/mx" currentState="open">
+   currentState="open"
+   useHandCursor="true"
+   buttonMode="true"
+   >
 	
 	<fx:Script>
 	<![CDATA[
@@ -24,6 +27,6 @@
 		<s:State name="closed"/>
 	</s:states>
 	
-	<mx:Image id="image" source="{getIcon(currentState)}"/>
+	<s:Image id="image" source="{ getIcon( currentState )}" />
 	
 </s:Group>

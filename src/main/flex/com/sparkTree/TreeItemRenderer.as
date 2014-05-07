@@ -42,7 +42,7 @@ public class TreeItemRenderer extends ItemRenderer implements ITreeItemRenderer
 	//
 	//--------------------------------------------------------------------------
 	
-	private var tree:Tree;
+	protected var tree:Tree;
 	
 	//--------------------------------------------------------------------------
 	//
