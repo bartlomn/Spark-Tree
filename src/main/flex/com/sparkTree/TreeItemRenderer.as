@@ -343,7 +343,7 @@ public class TreeItemRenderer extends ItemRenderer implements ITreeItemRenderer
 			return getStyle("color");
 	}
 	
-	private function updateChildren():void
+	protected function updateChildren():void
 	{
 		children = data && tree && tree.dataDescriptor ? 
 			tree.dataDescriptor.getChildren(data) : null;
