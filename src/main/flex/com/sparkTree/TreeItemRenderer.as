@@ -355,7 +355,7 @@ public class TreeItemRenderer extends ItemRenderer implements ITreeItemRenderer
 	//
 	//--------------------------------------------------------------------------
 
-	private function addedToStage(event:Event):void
+	protected function addedToStage(event:Event):void
 	{
 		var container:DisplayObjectContainer = owner;
 		while (!(container is Tree) && container)
