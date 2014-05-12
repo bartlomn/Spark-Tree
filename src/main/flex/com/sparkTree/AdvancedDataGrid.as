@@ -342,7 +342,7 @@ public class AdvancedDataGrid extends DataGrid
 		// do not override styles if there are some in CSS
 		if (declaration)
 			return;
-		
+		// todo: fix - this overrides styles set in .styleName
 		setStyle("indentation", 17);
 		setStyle("disclosureOpenIcon", disclosureOpenIcon);
 		setStyle("disclosureClosedIcon", disclosureClosedIcon);
