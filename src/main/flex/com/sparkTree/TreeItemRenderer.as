@@ -43,6 +43,8 @@ public class TreeItemRenderer extends ItemRenderer implements ITreeItemRenderer
 	//--------------------------------------------------------------------------
 	
 	protected var tree:Tree;
+
+   public var hostComponent:Object;
 	
 	//--------------------------------------------------------------------------
 	//
